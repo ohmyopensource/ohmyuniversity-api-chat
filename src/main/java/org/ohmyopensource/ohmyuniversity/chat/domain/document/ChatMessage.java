@@ -52,6 +52,8 @@ public class ChatMessage {
     return id;
   }
 
+  public void setId(String id) { this.id = id; }
+
   public String getChannelId() {
     return channelId;
   }
