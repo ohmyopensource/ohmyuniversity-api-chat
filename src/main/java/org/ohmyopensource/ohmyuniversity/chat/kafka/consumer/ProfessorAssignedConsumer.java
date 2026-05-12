@@ -12,13 +12,6 @@ import org.springframework.stereotype.Component;
 
 /**
  * Kafka consumer for the {@code professor.assigned} topic.
- *
- * The core service publishes this event when a professor is assigned to a course.
- * This consumer adds the professor as a TEACHER_ADMIN member of the corresponding channel,
- * giving them moderation rights (mute, pin, archive).
- *
- * Same race-condition handling as StudentEnrolledConsumer — if the channel
- * does not exist yet, the event is dropped with a warning.
  */
 @Component
 public class ProfessorAssignedConsumer {
@@ -39,7 +32,7 @@ public class ProfessorAssignedConsumer {
   @KafkaListener(
       topics = "professor.assigned",
       groupId = "ohmyuniversity-chat",
-      containerFactory = "kafkaListenerContainerFactory"
+      containerFactory = "professorAssignedContainerFactory"
   )
   public void consume(ProfessorAssignedEvent event) {
     log.debug("Received professor.assigned event: userId={} externalChannelId={}",

@@ -12,12 +12,6 @@ import org.springframework.stereotype.Component;
 
 /**
  * Kafka consumer for the {@code student.enrolled} topic.
- *
- * The core service publishes this event when a student enrolls in a course.
- * This consumer adds the student as a STUDENT member of the corresponding channel.
- *
- * If the channel does not exist yet (race condition between course.channel.requested
- * and student.enrolled events), the event is logged as a warning and dropped.
  */
 @Component
 public class StudentEnrolledConsumer {
@@ -38,7 +32,7 @@ public class StudentEnrolledConsumer {
   @KafkaListener(
       topics = "student.enrolled",
       groupId = "ohmyuniversity-chat",
-      containerFactory = "kafkaListenerContainerFactory"
+      containerFactory = "studentEnrolledContainerFactory"
   )
   public void consume(StudentEnrolledEvent event) {
     log.debug("Received student.enrolled event: userId={} externalChannelId={}",

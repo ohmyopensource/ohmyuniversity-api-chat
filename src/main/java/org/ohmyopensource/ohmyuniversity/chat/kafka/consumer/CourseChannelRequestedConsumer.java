@@ -27,7 +27,7 @@ public class CourseChannelRequestedConsumer {
   @KafkaListener(
       topics = "course.channel.requested",
       groupId = "ohmyuniversity-chat",
-      containerFactory = "kafkaListenerContainerFactory"
+      containerFactory = "courseChannelRequestedContainerFactory"
   )
   public void consume(CourseChannelRequestedEvent event) {
     log.debug("Received course.channel.requested event: externalChannelId={}",
