@@ -65,6 +65,21 @@ public class ChannelMemberService {
   }
 
   /**
+   * Checks whether a user holds a specific role in a channel.
+   *
+   * @param channelId the channel UUID
+   * @param userId    the opaque user ID from the JWT header
+   * @param role      the role to check
+   * @return {@code true} if the user is an active member with the given role
+   */
+  public boolean hasRole(UUID channelId, String userId, MemberRole role) {
+    return channelMemberRepository
+        .findByChannelIdAndUserIdAndLeftAtIsNull(channelId, userId)
+        .map(member -> member.getRole() == role)
+        .orElse(false);
+  }
+
+  /**
    * Add a user to a channel with the given role.
    *
    * This method is idempotent — if the user is already an active member,

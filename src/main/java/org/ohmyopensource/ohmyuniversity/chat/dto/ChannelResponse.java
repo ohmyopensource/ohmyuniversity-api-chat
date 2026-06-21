@@ -5,7 +5,7 @@ import java.util.UUID;
 import org.ohmyopensource.ohmyuniversity.chat.domain.entity.ChannelStatus;
 
 /**
- * Response DTO for GET /api/channels/{channelId}.
+ * Response DTO for {@code GET /api/v1/channels/{channelId}}.
  */
 public class ChannelResponse {
 
@@ -16,6 +16,8 @@ public class ChannelResponse {
   private String academicYear;
   private String semester;
   private ChannelStatus status;
+  private Instant defaultExpiresAt;
+  private Instant closesAt;
   private Instant archiveAt;
   private Instant deleteAt;
 
@@ -73,6 +75,22 @@ public class ChannelResponse {
 
   public void setStatus(ChannelStatus status) {
     this.status = status;
+  }
+
+  public Instant getDefaultExpiresAt() {
+    return defaultExpiresAt;
+  }
+
+  public void setDefaultExpiresAt(Instant defaultExpiresAt) {
+    this.defaultExpiresAt = defaultExpiresAt;
+  }
+
+  public Instant getClosesAt() {
+    return closesAt;
+  }
+
+  public void setClosesAt(Instant closesAt) {
+    this.closesAt = closesAt;
   }
 
   public Instant getArchiveAt() {

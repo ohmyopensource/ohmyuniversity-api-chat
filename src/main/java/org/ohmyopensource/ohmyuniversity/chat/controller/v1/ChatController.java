@@ -1,4 +1,4 @@
-package org.ohmyopensource.ohmyuniversity.chat.controller;
+package org.ohmyopensource.ohmyuniversity.chat.controller.v1;
 
 import java.util.UUID;
 import org.ohmyopensource.ohmyuniversity.chat.domain.document.ChatMessage;
