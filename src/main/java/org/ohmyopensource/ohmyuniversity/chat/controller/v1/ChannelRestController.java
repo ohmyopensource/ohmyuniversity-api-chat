@@ -28,13 +28,21 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * REST controller for channel metadata, member management, and message history.
+ * REST controller for channel metadata, member listing, message history, and channel lifecycle
+ * management.
  *
- * <p>These endpoints are for read and administrative operations — real-time messaging
- * goes through the WebSocket controller.
+ * <p>These endpoints cover read and administrative operations.
+ * Real-time messaging is handled separately by the WebSocket controller.
  *
  * <p>All endpoints require the caller to be an active member of the channel.
- * The {@code userId} is read from the {@code X-User-Id} header forwarded by the gateway.
+ * The {@code userId} is extracted from the {@code X-User-Id} header injected by the API gateway
+ * after JWT validation — it is never read directly from a client-supplied value.
+ *
+ * <p>Exposed endpoints:
+ * - {@code GET  /api/v1/chat/channels/{channelId}}              — channel metadata
+ * - {@code GET  /api/v1/chat/channels/{channelId}/members}      — active members
+ * - {@code GET  /api/v1/chat/channels/{channelId}/messages}     — paginated history
+ * - {@code PATCH /api/v1/chat/channels/{channelId}/closes-at}   — advance TTL (TEACHER_ADMIN)
  */
 @RestController
 @RequestMapping("/api/v1/chat/channels")
@@ -42,12 +50,22 @@ public class ChannelRestController {
 
   private static final Logger log = LoggerFactory.getLogger(ChannelRestController.class);
 
+  /**
+   * Name of the HTTP header carrying the authenticated user identifier, injected by the API gateway
+   * after JWT validation.
+   */
   private static final String USER_ID_HEADER = "X-User-Id";
+
+  /**
+   * Maximum number of messages returned per page to prevent excessive payload sizes.
+   */
   private static final int MAX_PAGE_SIZE = 50;
 
   private final ChatChannelService chatChannelService;
   private final ChannelMemberService channelMemberService;
   private final ChatMessageService chatMessageService;
+
+  // ============ Constructor ============
 
   /**
    * Constructs the controller with all required services.
@@ -65,12 +83,14 @@ public class ChannelRestController {
     this.chatMessageService = chatMessageService;
   }
 
+  // ============ Class Methods ============
+
   /**
-   * Returns channel metadata including TTL fields.
+   * Returns channel metadata including TTL fields ({@code defaultExpiresAt}, {@code closesAt}).
    *
    * @param channelId the channel UUID
    * @param userId    the caller's user ID from the gateway header
-   * @return 200 with channel data, 404 if not found, 403 if not a member
+   * @return 200 with channel data, 404 if not found, 403 if not an active member
    */
   @GetMapping("/{channelId}")
   public ResponseEntity<ChannelResponse> getChannel(
@@ -90,11 +110,11 @@ public class ChannelRestController {
   }
 
   /**
-   * Returns the active members of a channel.
+   * Returns the list of currently active members of a channel.
    *
    * @param channelId the channel UUID
    * @param userId    the caller's user ID from the gateway header
-   * @return 200 with member list, 404 if channel not found, 403 if not a member
+   * @return 200 with member list, 404 if channel not found, 403 if not an active member
    */
   @GetMapping("/{channelId}/members")
   public ResponseEntity<List<ChannelMemberResponse>> getMembers(
@@ -122,11 +142,13 @@ public class ChannelRestController {
   /**
    * Returns paginated message history for a channel, sorted oldest-first.
    *
+   * <p>Page size is capped at {@link #MAX_PAGE_SIZE} regardless of the requested value.
+   *
    * @param channelId the channel UUID
    * @param userId    the caller's user ID from the gateway header
    * @param page      zero-based page number (default 0)
-   * @param size      page size (default 20, max 50)
-   * @return 200 with paginated messages, 404 if not found, 403 if not a member
+   * @param size      page size (default 20, capped at {@value #MAX_PAGE_SIZE})
+   * @return 200 with paginated messages, 404 if not found, 403 if not an active member
    */
   @GetMapping("/{channelId}/messages")
   public ResponseEntity<Page<ChatMessageResponse>> getMessages(
@@ -153,18 +175,20 @@ public class ChannelRestController {
   }
 
   /**
-   * Allows a professor ({@code TEACHER_ADMIN}) to advance the closing timestamp
-   * of a channel earlier than the default academic TTL.
+   * Allows a professor ({@code TEACHER_ADMIN}) to advance the closing timestamp of a channel
+   * earlier than the calculated academic TTL.
    *
-   * <p>The requested {@code closesAt} must not be in the past and must not exceed
-   * {@code defaultExpiresAt}. Only active channels can be updated.
-   * Only members with {@link MemberRole#TEACHER_ADMIN} role are authorised.
+   * <p>Validation rules enforced by {@link ChatChannelService#setClosesAt}:
+   * - {@code closesAt} must not be in the past
+   * - {@code closesAt} must not exceed {@code defaultExpiresAt}
+   * - The channel must be in {@code ACTIVE} status
    *
    * @param channelId the channel UUID
    * @param userId    the caller's user ID from the gateway header
    * @param request   the request body containing the new {@code closesAt} timestamp
-   * @return 200 with updated channel data, 404 if not found,
-   *         403 if not a TEACHER_ADMIN, 400 if the timestamp is invalid
+   * @return 200 with updated channel data, 400 if the timestamp violates validation rules, 403 if
+   * the caller is not a {@code TEACHER_ADMIN}, 404 if the channel does not exist, 409 if the
+   * channel is not in a state that allows this operation
    */
   @PatchMapping("/{channelId}/closes-at")
   public ResponseEntity<ChannelResponse> setClosesAt(

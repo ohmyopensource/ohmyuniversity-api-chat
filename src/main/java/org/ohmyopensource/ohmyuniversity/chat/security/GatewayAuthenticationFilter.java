@@ -12,19 +12,43 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
- * Reads the X-User-Id header injected by the API gateway after JWT validation
- * and populates the Spring Security context with a simple authentication token.
+ * Spring Security filter that establishes the authentication context from the {@code X-User-Id}
+ * header injected by the API gateway.
  *
- * // @TODO: When the gateway is ready and this service is exposed only internally
- * // (e.g. via Docker network), verify that X-User-Id cannot be spoofed by
- * // ensuring the service is truly unreachable from outside the internal network.
- * // If extra hardening is needed, validate a shared internal secret header
- * // (e.g. X-Internal-Secret) alongside X-User-Id.
+ * <p>The OhMyUniversity API gateway validates the client JWT and extracts the
+ * user identifier before forwarding requests to downstream services. This filter trusts that header
+ * and uses it to populate the Spring Security context, avoiding redundant JWT validation at the
+ * service level.
+ *
+ * <p>If the {@code X-User-Id} header is absent or blank, no authentication is
+ * set and the request proceeds unauthenticated — the security filter chain will reject it if the
+ * endpoint requires authentication.
+ *
+ * <p>Security note: this trust model is safe as long as the chat service is
+ * reachable exclusively through the internal Docker network and not directly from external clients.
+ * If additional hardening is required, consider validating a shared internal secret header (e.g.
+ * {@code X-Internal-Secret}) alongside {@code X-User-Id}.
  */
 public class GatewayAuthenticationFilter extends OncePerRequestFilter {
 
+  /**
+   * Name of the HTTP header carrying the authenticated user identifier, injected by the API gateway
+   * after JWT validation.
+   */
   private static final String USER_ID_HEADER = "X-User-Id";
 
+  // ============ Override Methods ============
+
+  /**
+   * Reads the {@code X-User-Id} header and, if present and non-blank, populates the Spring Security
+   * context with a {@link UsernamePasswordAuthenticationToken} granting {@code ROLE_USER}.
+   *
+   * @param request     the incoming HTTP request
+   * @param response    the HTTP response
+   * @param filterChain the filter chain to continue after processing
+   * @throws ServletException if a servlet error occurs
+   * @throws IOException      if an I/O error occurs
+   */
   @Override
   protected void doFilterInternal(
       HttpServletRequest request,

@@ -18,16 +18,30 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 
 /**
- * WebSocket STOMP controller for real-time chat.
- * The userId is read from the {@code X-User-Id} header forwarded
- * by the API gateway after JWT validation. It is never taken from
- * the client payload directly.
+ * WebSocket STOMP controller for real-time chat messaging.
+ *
+ * <p>Handles messages sent by clients over the STOMP protocol to the
+ * {@code /app/chat.send/{channelId}} destination. After persisting the message,
+ * broadcasts the response to all subscribers of {@code /topic/channel.{channelId}}.
+ *
+ * <p>The {@code userId} is always read from the {@code X-User-Id} header injected
+ * by the API gateway after JWT validation — it is never taken from the client payload.
+ *
+ * <p>Message flow:
+ * - Client sends STOMP SEND frame to {@code /app/chat.send/{channelId}}
+ * - Controller validates the channel exists and the sender is an active member
+ * - Message is persisted via {@link ChatMessageService}
+ * - Persisted message is broadcast to {@code /topic/channel.{channelId}}
  */
 @Controller
 public class ChatController {
 
   private static final Logger log = LoggerFactory.getLogger(ChatController.class);
 
+  /**
+   * Name of the STOMP header carrying the authenticated user identifier,
+   * injected by the API gateway after JWT validation.
+   */
   private static final String USER_ID_HEADER = "X-User-Id";
 
   private final ChatChannelService chatChannelService;
@@ -35,6 +49,16 @@ public class ChatController {
   private final ChatMessageService chatMessageService;
   private final SimpMessagingTemplate messagingTemplate;
 
+  // ============ Constructor ============
+
+  /**
+   * Constructs the controller with all required services.
+   *
+   * @param chatChannelService   service for channel lookup
+   * @param channelMemberService service for membership validation
+   * @param chatMessageService   service for message persistence
+   * @param messagingTemplate    STOMP messaging template for broadcasting
+   */
   public ChatController(
       ChatChannelService chatChannelService,
       ChannelMemberService channelMemberService,
@@ -46,11 +70,23 @@ public class ChatController {
     this.messagingTemplate = messagingTemplate;
   }
 
+  // ============ Class Methods ============
+
   /**
-   * Handle an incoming chat message from a client.
-   * @param channelId the target channel UUID from the STOMP destination
-   * @param userId    the sender's user ID from the gateway header
-   * @param request   the message payload
+   * Handles an incoming chat message from a WebSocket client.
+   *
+   * <p>The message is silently dropped (with a warning log) if any of the
+   * following conditions are met:
+   * - {@code channelId} is not a valid UUID
+   * - the channel does not exist
+   * - the sender is not an active member of the channel
+   *
+   * <p>On success, the persisted message is broadcast to all subscribers
+   * of {@code /topic/channel.{channelId}}.
+   *
+   * @param channelId the target channel UUID extracted from the STOMP destination variable
+   * @param userId    the sender's user ID from the gateway-injected header
+   * @param request   the message payload containing the message content
    */
   @MessageMapping("/chat.send/{channelId}")
   public void sendMessage(
@@ -90,10 +126,12 @@ public class ChatController {
         channelId, userId, saved.getId());
   }
 
-  // ================================
-  // Private helpers
-  // ================================
-
+  /**
+   * Maps a {@link ChatMessage} document to a {@link ChatMessageResponse} DTO.
+   *
+   * @param message the persisted message document
+   * @return the response DTO broadcast to channel subscribers
+   */
   private ChatMessageResponse toResponse(ChatMessage message) {
     ChatMessageResponse response = new ChatMessageResponse();
     response.setMessageId(message.getId());

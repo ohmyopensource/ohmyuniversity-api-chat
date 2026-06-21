@@ -17,8 +17,8 @@ import org.springframework.transaction.annotation.Transactional;
  * Service for managing {@link ChatChannel} lifecycle in OhMyUniversity!.
  *
  * <p>Channels are created exclusively by the Kafka consumer
- * {@code CourseEditionDiscoveredConsumer} and never via REST directly. This service provides the
- * shared logic used by both consumers and REST controllers.
+ * {@code CourseEditionDiscoveredConsumer} and never via REST directly.
+ * This service provides the shared logic used by both consumers and REST controllers.
  *
  * <p>Channel lifecycle:
  * - {@code ACTIVE} — channel is open for messages
@@ -77,7 +77,7 @@ public class ChatChannelService {
    * return the existing channel without creating a duplicate.
    *
    * <p>{@code defaultExpiresAt} and {@code closesAt} are calculated automatically
-   * by {@link ChatChannel#onCreate()} from {@code academicYear} and {@code semester}.
+   * by ChatChannel#onCreate() from {@code academicYear} and {@code semester}.
    *
    * @param channel the channel to create; {@code id} must be null (set by JPA)
    * @return the persisted channel (existing or newly created)
@@ -92,11 +92,11 @@ public class ChatChannelService {
   /**
    * Advances the {@code closesAt} timestamp for a channel.
    *
-   * <p>This method allows a professor ({@code TEACHER_ADMIN}) to close the channel
-   * earlier than the calculated default. The requested timestamp must not be: - in the past - after
-   * {@code defaultExpiresAt}
+   * <p>Allows a professor ({@code TEACHER_ADMIN}) to close the channel earlier than
+   * the calculated academic TTL. The requested timestamp must satisfy: - must not be in the past -
+   * must not be after {@code defaultExpiresAt}
    *
-   * <p>Important: {@code closesAt} can only be moved earlier (advanced), never later.
+   * <p>{@code closesAt} can only be moved earlier (advanced), never later.
    * This method does not allow extending the channel beyond its academic TTL.
    *
    * @param channelId   the channel UUID
@@ -139,8 +139,9 @@ public class ChatChannelService {
    * Transitions a channel to a new lifecycle status.
    *
    * <p>Valid transitions:
-   * - {@code ACTIVE} -> {@code READ_ONLY} - {@code READ_ONLY} -> {@code ARCHIVED} -
-   * {@code ARCHIVED} -> {@code DELETED}
+   * - {@code ACTIVE} → {@code READ_ONLY}
+   * - {@code READ_ONLY} → {@code ARCHIVED}
+   * - {@code ARCHIVED} → {@code DELETED}
    *
    * @param channelId the channel UUID
    * @param newStatus the target status

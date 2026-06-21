@@ -12,10 +12,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Service for managing {@link ChannelMember} membership.
+ * Service for managing {@link ChannelMember} lifecycle in OhMyUniversity!.
  *
- * Members are added automatically by Kafka consumers when the core service
- * publishes enrollment or assignment events.
+ * <p>Members are added automatically by Kafka consumers when the core service
+ * publishes {@code enrollment.discovered} (students) or {@code teaching-assignment.discovered}
+ * (professors) events. They are never added directly via REST.
+ *
+ * <p>Membership removal is soft-delete only — rows are retained for audit
+ * purposes with {@code leftAt} set to the removal timestamp. All queries filter on
+ * {@code leftAt IS NULL} to return only active memberships.
  */
 @Service
 @Transactional(readOnly = true)
@@ -23,27 +28,39 @@ public class ChannelMemberService {
 
   private final ChannelMemberRepository channelMemberRepository;
 
+  // ============ Constructor ============
+
+  /**
+   * Constructs the service with the required repository.
+   *
+   * @param channelMemberRepository repository for {@link ChannelMember} persistence
+   */
   public ChannelMemberService(ChannelMemberRepository channelMemberRepository) {
     this.channelMemberRepository = channelMemberRepository;
   }
 
+  // ============ Class Methods ============
+
   /**
    * Returns all active members of a channel.
-   * Used by GET /api/channels/{channelId}/members.
+   *
+   * <p>Used by {@code ChannelRestController} to serve
+   * {@code GET /api/v1/chat/channels/{channelId}/members}.
    *
    * @param channelId the channel UUID
-   * @return list of active members, empty list if none
+   * @return list of active members; empty list if none
    */
   public List<ChannelMember> findActiveMembers(UUID channelId) {
     return channelMemberRepository.findByChannelIdAndLeftAtIsNull(channelId);
   }
 
   /**
-   * Find the active membership for a specific user in a channel.
-   * Used for permission checks before allowing message sending or moderation.
+   * Returns the active membership for a specific user in a channel.
+   *
+   * <p>Used for permission checks before allowing message sending or moderation.
    *
    * @param channelId the channel UUID
-   * @param userId    the opaque user ID from the JWT header
+   * @param userId    the opaque user ID from the gateway-injected header
    * @return the active membership if it exists
    */
   public Optional<ChannelMember> findActiveMember(UUID channelId, String userId) {
@@ -52,12 +69,14 @@ public class ChannelMemberService {
   }
 
   /**
-   * Check whether a user is an active member of a channel.
-   * Lightweight version of findActiveMember for permission-only checks.
+   * Checks whether a user is an active member of a channel.
+   *
+   * <p>Lightweight alternative to {@link #findActiveMember} for permission-only
+   * checks where the membership details are not needed.
    *
    * @param channelId the channel UUID
-   * @param userId    the opaque user ID from the JWT header
-   * @return true if the user is an active member
+   * @param userId    the opaque user ID from the gateway-injected header
+   * @return {@code true} if the user is an active member
    */
   public boolean isActiveMember(UUID channelId, String userId) {
     return channelMemberRepository
@@ -67,8 +86,11 @@ public class ChannelMemberService {
   /**
    * Checks whether a user holds a specific role in a channel.
    *
+   * <p>Used by {@code ChannelRestController} to authorise role-restricted
+   * operations such as advancing the channel closing timestamp.
+   *
    * @param channelId the channel UUID
-   * @param userId    the opaque user ID from the JWT header
+   * @param userId    the opaque user ID from the gateway-injected header
    * @param role      the role to check
    * @return {@code true} if the user is an active member with the given role
    */
@@ -80,13 +102,14 @@ public class ChannelMemberService {
   }
 
   /**
-   * Add a user to a channel with the given role.
+   * Adds a user to a channel with the given role.
    *
-   * This method is idempotent — if the user is already an active member,
-   * it returns the existing membership without creating a duplicate.
-   * This protects against replayed Kafka events.
+   * <p>This method is idempotent — if the user is already an active member,
+   * the existing membership is returned without creating a duplicate. This protects against
+   * replayed {@code enrollment.discovered} and {@code teaching-assignment.discovered} Kafka
+   * events.
    *
-   * @param channel the parent channel (must be already persisted)
+   * @param channel the parent channel; must already be persisted
    * @param userId  the opaque user ID from the core service
    * @param role    the role to assign within this channel
    * @return the persisted membership (existing or newly created)
@@ -105,9 +128,9 @@ public class ChannelMemberService {
   }
 
   /**
-   * Remove a user from a channel by setting leftAt to now.
+   * Removes a user from a channel by setting {@code leftAt} to the current timestamp.
    *
-   * This is a soft delete — the membership row is kept for audit purposes.
+   * <p>This is a soft delete — the membership row is retained for audit purposes.
    * If the user is not an active member, this method does nothing.
    *
    * @param channelId the channel UUID

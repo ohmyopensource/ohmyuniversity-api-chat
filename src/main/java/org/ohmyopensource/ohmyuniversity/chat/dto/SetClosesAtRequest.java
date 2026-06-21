@@ -4,7 +4,7 @@ import jakarta.validation.constraints.NotNull;
 import java.time.Instant;
 
 /**
- * Request payload for {@code PATCH /api/v1/channels/{channelId}/closes-at}.
+ * Request payload for {@code PATCH /api/v1/chat/channels/{channelId}/closes-at}.
  *
  * <p>Allows a professor ({@code TEACHER_ADMIN}) to advance the closing timestamp
  * of an active chat channel. The requested timestamp must not be in the past and must not exceed
@@ -12,6 +12,10 @@ import java.time.Instant;
  */
 public class SetClosesAtRequest {
 
+  /**
+   * The new closing timestamp requested by the professor. Must not be null, must not be in the
+   * past, and must not exceed {@code defaultExpiresAt}.
+   */
   @NotNull
   private Instant closesAt;
 
@@ -20,7 +24,6 @@ public class SetClosesAtRequest {
   public Instant getClosesAt() {
     return closesAt;
   }
-
   public void setClosesAt(Instant closesAt) {
     this.closesAt = closesAt;
   }

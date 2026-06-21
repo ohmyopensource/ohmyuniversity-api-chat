@@ -5,7 +5,11 @@ import java.util.UUID;
 import org.ohmyopensource.ohmyuniversity.chat.domain.entity.MemberRole;
 
 /**
- * Response DTO for a single member in GET /api/channels/{channelId}/members.
+ * Response DTO representing a single active member of a chat channel.
+ *
+ * <p>Returned by {@code GET /api/v1/chat/channels/{channelId}/members}.
+ * Only active memberships ({@code leftAt IS NULL}) are included in the response — soft-deleted
+ * members are never exposed via this DTO.
  */
 public class ChannelMemberResponse {
 
@@ -15,10 +19,11 @@ public class ChannelMemberResponse {
   private boolean muted;
   private Instant joinedAt;
 
+  // ============ Getters | Setters | Bool ============
+
   public UUID getId() {
     return id;
   }
-
   public void setId(UUID id) {
     this.id = id;
   }
@@ -26,7 +31,6 @@ public class ChannelMemberResponse {
   public String getUserId() {
     return userId;
   }
-
   public void setUserId(String userId) {
     this.userId = userId;
   }
@@ -34,7 +38,6 @@ public class ChannelMemberResponse {
   public MemberRole getRole() {
     return role;
   }
-
   public void setRole(MemberRole role) {
     this.role = role;
   }
@@ -42,7 +45,6 @@ public class ChannelMemberResponse {
   public boolean isMuted() {
     return muted;
   }
-
   public void setMuted(boolean muted) {
     this.muted = muted;
   }
@@ -50,7 +52,6 @@ public class ChannelMemberResponse {
   public Instant getJoinedAt() {
     return joinedAt;
   }
-
   public void setJoinedAt(Instant joinedAt) {
     this.joinedAt = joinedAt;
   }

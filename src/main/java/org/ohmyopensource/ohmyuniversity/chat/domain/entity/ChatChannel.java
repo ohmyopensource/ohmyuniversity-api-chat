@@ -26,13 +26,11 @@ import java.util.UUID;
  * via Cineca sync. They are never created manually via REST.
  *
  * <p>Each channel has a bounded lifecycle tied to the academic semester:
- * <ul>
- *   <li>{@code defaultExpiresAt} — the maximum TTL, calculated at creation time from
- *       {@code academicYear} and {@code semester}. Immutable after creation.</li>
- *   <li>{@code closesAt} — the effective closing timestamp. Defaults to
- *       {@code defaultExpiresAt}. A professor ({@code TEACHER_ADMIN}) may advance this
- *       date but never extend it beyond {@code defaultExpiresAt}.</li>
- * </ul>
+ * - {@code defaultExpiresAt} — the maximum TTL, calculated at creation time from
+ *   {@code academicYear} and {@code semester}. Immutable after creation.
+ * - {@code closesAt} — the effective closing timestamp. Defaults to
+ *   {@code defaultExpiresAt}. A professor ({@code TEACHER_ADMIN}) may advance this
+ *   date but never extend it beyond {@code defaultExpiresAt}.
  *
  * <p>Important: these TTL fields control only the OhMyU chat channel.
  * The course itself remains active on Cineca and Moodle indefinitely.
