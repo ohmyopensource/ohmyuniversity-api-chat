@@ -1,3 +1,8 @@
+# ============================================================
+# OhMyUniversity! - Chat
+# Base configuration - shared across all profiles.
+# ============================================================
+
 spring:
   profiles:
     default: dev
@@ -20,7 +25,7 @@ spring:
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
 
 server:
-  port: 8081
+  port: ${SERVER_PORT:8084}
 
 management:
   endpoints:
